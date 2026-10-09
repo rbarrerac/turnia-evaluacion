@@ -1,0 +1,16 @@
+/**
+ * Módulo: Directivas base de Tailwind CSS
+ * Proyecto: Turnia
+ * Autor: Luis
+ * Fecha de creación: 15/09/2026
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-base bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+  }
+}

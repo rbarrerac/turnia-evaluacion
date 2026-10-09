@@ -1,0 +1,97 @@
+# Módulo: Orquestación del despliegue de Turnia con Docker Compose (Raspberry Pi 5, ARM64)
+# Proyecto: Turnia
+# Autor: Ronald
+# Fecha de creación: 08/10/2026
+#
+# Tres servicios: db (PostgreSQL 16), api (Node.js + Prisma) y web (Nginx con el frontend
+# y HTTPS). Solo "web" publica puertos; la base y la API quedan en la red interna.
+# Variables: se leen del archivo .env de la raíz (copiado de .env.docker.example).
+# Guía completa: DESPLIEGUE.md.
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USUARIO:-turnia_app}
+      POSTGRES_PASSWORD: ${PG_CLAVE:?Falta PG_CLAVE en el archivo .env (ver DESPLIEGUE.md, paso Configurar)}
+      POSTGRES_DB: ${PG_BD:-turnia}
+    volumes:
+      - datos_postgres:/var/lib/postgresql/data
+      # Solo se ejecuta la primera vez (volumen vacío): crea la extensión btree_gist.
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${PG_USUARIO:-turnia_app}:${PG_CLAVE:?Falta PG_CLAVE en el archivo .env (ver DESPLIEGUE.md, paso Configurar)}@db:5432/${PG_BD:-turnia}
+      JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET en el archivo .env (ver DESPLIEGUE.md, paso Configurar)}
+      JWT_EXPIRACION: ${JWT_EXPIRACION:-7d}
+      PUERTO_API: "4000"
+      # Mismo origen detrás de Nginx: el navegador no usa CORS, pero la API exige la variable.
+      ORIGEN_PERMITIDO: ${ORIGEN_PERMITIDO:-https://turnia.local}
+      DIRECTORIO_SUBIDAS: /app/almacenamiento/trabajos
+      # Cuentas que crea la semilla (mismos valores por defecto que api/.env.example).
+      CORREO_ADMIN: ${CORREO_ADMIN:-admin@turnia.gt}
+      CONTRASENA_ADMIN: ${CONTRASENA_ADMIN:-Admin1234Dev!}
+      CORREO_CLIENTA: ${CORREO_CLIENTA:-clienta@turnia.gt}
+      CONTRASENA_CLIENTA: ${CONTRASENA_CLIENTA:-Clienta1234Dev!}
+      # Correo opcional: vacías = modo consola (los correos se imprimen en los registros).
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PUERTO: ${SMTP_PUERTO:-}
+      SMTP_USUARIO: ${SMTP_USUARIO:-}
+      SMTP_CONTRASENA: ${SMTP_CONTRASENA:-}
+      SMTP_REMITENTE: ${SMTP_REMITENTE:-}
+    volumes:
+      - almacenamiento:/app/almacenamiento
+    expose:
+      - "4000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://127.0.0.1:4000/api/salud', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # La primera vez sincroniza el esquema y siembra los datos antes de escuchar.
+      start_period: 120s
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_URL_API: ""
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NOMBRE_SERVIDOR: ${NOMBRE_SERVIDOR:-turnia.local}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - certificados:/etc/nginx/certificados
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/salud"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  datos_postgres:
+  almacenamiento:
+  certificados:

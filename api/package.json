@@ -1,0 +1,38 @@
+{
+  "name": "turnia-api",
+  "version": "0.1.0",
+  "description": "API REST de Turnia — gestión de citas para salón de belleza",
+  "type": "module",
+  "main": "src/servidor.js",
+  "scripts": {
+    "dev": "nodemon src/servidor.js",
+    "start": "node src/servidor.js",
+    "preparar-bd": "node prisma/prepararBd.js",
+    "reiniciar-bd": "node prisma/prepararBd.js --reiniciar",
+    "esquema": "prisma generate && prisma db push && node prisma/aplicarRestricciones.js",
+    "preparar": "npm run preparar-bd && npm run esquema && npm run semilla",
+    "semilla": "node prisma/semilla.js",
+    "prueba": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
+    "cobertura": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --coverage",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@prisma/client": "^5.19.1",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.4.0",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.0.16",
+    "pg": "^8.23.0",
+    "prisma": "^5.19.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.4",
+    "supertest": "^7.0.0"
+  }
+}

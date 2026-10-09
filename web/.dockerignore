@@ -1,0 +1,16 @@
+# Módulo: Archivos excluidos del contexto de construcción de la imagen del frontend
+# Proyecto: Turnia
+# Autor: Luis
+# Fecha de creación: 08/10/2026
+
+node_modules
+npm-debug.log*
+*.log
+# .env de desarrollo: trae VITE_URL_API=http://localhost:...; en Docker se construye vacía.
+.env
+.env.*
+coverage
+dist
+.git
+Dockerfile
+.dockerignore

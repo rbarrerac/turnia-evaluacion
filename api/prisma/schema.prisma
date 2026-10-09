@@ -1,0 +1,138 @@
+// Módulo: Esquema de base de datos (Prisma) de Turnia
+// Proyecto: Turnia
+// Autor: Ronald
+// Fecha de creación: 15/09/2026
+// Modificado por: Ronald — 07/10/2026 (Incremento 7A: comentarios de las CHECK ya aplicadas)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rol {
+  administradora
+  clienta
+}
+
+enum EstadoCita {
+  pendiente
+  confirmada
+  completada
+  cancelada
+}
+
+enum TipoNotificacion {
+  confirmacion
+  recordatorio
+}
+
+model usuarios {
+  id              String   @id @default(uuid()) @db.Uuid
+  nombre          String   @db.VarChar(120)
+  correo          String   @unique @db.VarChar(160)
+  telefono        String?  @db.VarChar(20)
+  contrasena_hash String   @db.VarChar(255)
+  rol             Rol      @default(clienta)
+  activo          Boolean  @default(true)
+  creado_en       DateTime @default(now())
+
+  citas citas[]
+}
+
+model servicios {
+  id                String   @id @default(uuid()) @db.Uuid
+  nombre            String   @db.VarChar(120)
+  descripcion       String?
+  // CHECK duracion_minutos > 0 — Prisma no soporta CHECK nativamente; se aplica desde
+  // prisma/aplicarRestricciones.js (npm run esquema), ver prisma/migrations/README.md.
+  duracion_minutos  Int
+  // CHECK precio >= 0 — mismo caso que duracion_minutos.
+  precio            Decimal  @db.Decimal(8, 2)
+  activo            Boolean  @default(true)
+  creado_en         DateTime @default(now())
+
+  citas citas[]
+}
+
+model horarios_atencion {
+  id          String  @id @default(uuid()) @db.Uuid
+  // CHECK dia_semana entre 0 y 6 (0 = domingo) y CHECK hora_inicio < hora_fin —
+  // aplicadas desde prisma/aplicarRestricciones.js (npm run esquema).
+  dia_semana  Int     @db.SmallInt
+  hora_inicio DateTime @db.Time()
+  hora_fin    DateTime @db.Time()
+  activo      Boolean @default(true)
+}
+
+model dias_no_laborables {
+  id     String   @id @default(uuid()) @db.Uuid
+  fecha  DateTime @unique @db.Date
+  motivo String?  @db.VarChar(160)
+}
+
+model citas {
+  id             String     @id @default(uuid()) @db.Uuid
+  clienta_id     String     @db.Uuid
+  clienta        usuarios   @relation(fields: [clienta_id], references: [id])
+  servicio_id    String     @db.Uuid
+  servicio       servicios  @relation(fields: [servicio_id], references: [id])
+  inicia_en      DateTime
+  termina_en     DateTime
+  estado         EstadoCita @default(pendiente)
+  notas          String?
+  creado_en      DateTime   @default(now())
+  actualizado_en DateTime   @default(now()) @updatedAt
+
+  notificaciones notificaciones[]
+
+  // Regla de integridad clave (RN-02) — no superposición de citas activas:
+  // Prisma no modela EXCLUDE de PostgreSQL de forma nativa. Se agrega mediante
+  // una migración SQL manual (ver prisma/migrations/README.md):
+  //
+  // CREATE EXTENSION IF NOT EXISTS btree_gist;
+  // ALTER TABLE citas ADD CONSTRAINT sin_superposicion
+  //   EXCLUDE USING gist (
+  //     tsrange(inicia_en, termina_en) WITH &&
+  //   ) WHERE (estado <> 'cancelada');
+}
+
+model notificaciones {
+  id         String           @id @default(uuid()) @db.Uuid
+  cita_id    String           @db.Uuid
+  cita       citas            @relation(fields: [cita_id], references: [id])
+  tipo       TipoNotificacion
+  enviado_en DateTime?
+  exitoso    Boolean          @default(false)
+}
+
+model categorias_galeria {
+  id        String   @id @default(uuid()) @db.Uuid
+  nombre    String   @unique @db.VarChar(120)
+  orden     Int      @default(0)
+  activo    Boolean  @default(true)
+  creado_en DateTime @default(now())
+
+  fotos fotos_galeria[]
+}
+
+model fotos_galeria {
+  id           String             @id @default(uuid()) @db.Uuid
+  categoria_id String             @db.Uuid
+  categoria    categorias_galeria @relation(fields: [categoria_id], references: [id], onDelete: Cascade)
+  archivo      String             @db.VarChar(255)
+  titulo       String?            @db.VarChar(160)
+  descripcion  String?
+  orden        Int                @default(0)
+  creado_en    DateTime           @default(now())
+}
+
+// Almacén clave-valor para los textos editables de la página pública de inicio (mini-CMS).
+model contenido_sitio {
+  clave          String   @id @db.VarChar(80)
+  valor          String
+  actualizado_en DateTime @default(now()) @updatedAt
+}

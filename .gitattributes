@@ -1,0 +1,11 @@
+# Módulo: Normalización de fin de línea en el repositorio
+# Proyecto: Turnia
+# Autor: Ronald
+# Fecha de creación: 08/10/2026
+#
+# Los scripts de shell se ejecutan dentro de contenedores Linux y en la Raspberry Pi:
+# con fin de línea CRLF (el que Git pone en Windows con core.autocrlf=true) fallan con
+# "bad interpreter" o "$'\r': command not found". Se fuerzan siempre en LF.
+*.sh text eol=lf
+web/nginx.conf text eol=lf
+docker/postgres/init/*.sql text eol=lf

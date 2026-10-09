@@ -1,0 +1,21 @@
+# Módulo: Archivos excluidos del contexto de construcción de la imagen de la API
+# Proyecto: Turnia
+# Autor: Ronald
+# Fecha de creación: 08/10/2026
+
+node_modules
+npm-debug.log*
+*.log
+.env
+.env.*
+coverage
+dist
+# Fotos subidas en desarrollo: en Docker viven en el volumen "almacenamiento".
+almacenamiento
+# Pruebas y herramientas de desarrollo: la imagen solo ejecuta la API.
+pruebas
+jest.config.js
+.eslintrc.json
+.git
+Dockerfile
+.dockerignore
