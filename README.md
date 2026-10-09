@@ -32,8 +32,8 @@ Proyecto del curso de **Aseguramiento de la Calidad del Software** — Universid
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/rbarrerac/turnia.git
-cd turnia
+git clone https://github.com/rbarrerac/turnia-evaluacion.git
+cd turnia-evaluacion
 ```
 
 ### 2. Configurar variables de entorno (backend)
